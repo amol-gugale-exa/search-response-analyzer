@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Response Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+
+    h1 { font-size: 1.4rem; font-weight: 600; color: #f8fafc; margin-bottom: 4px; }
+    .subtitle { color: #64748b; font-size: 0.82rem; margin-bottom: 20px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #1e293b; padding-bottom: 0; }
+    .tab {
+      padding: 9px 22px; border-radius: 7px 7px 0 0; font-size: 0.88rem; font-weight: 600;
+      cursor: pointer; color: #64748b; background: transparent; border: 1px solid transparent;
+      border-bottom: none; transition: all 0.15s; position: relative; top: 1px;
+    }
+    .tab:hover { color: #94a3b8; }
+    .tab.active { color: #f1f5f9; background: #1e293b; border-color: #334155; border-bottom-color: #1e293b; }
+
+    /* Panels */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .panel { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; }
+    .panel h2 { font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+
+    textarea {
+      width: 100%; height: 320px; background: #0f172a; color: #a5f3fc;
+      border: 1px solid #334155; border-radius: 6px; padding: 12px;
+      font-family: monospace; font-size: 0.78rem; resize: vertical; outline: none;
+    }
+    textarea:focus { border-color: #38bdf8; }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    button {
+      padding: 8px 18px; border: none; border-radius: 6px; font-size: 0.85rem;
+      font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.82; }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-secondary { background: #8b5cf6; color: #fff; }
+    .btn-clear { background: #334155; color: #94a3b8; }
+
+    .error { color: #f87171; font-size: 0.8rem; margin-top: 8px; min-height: 16px; }
+
+    /* Cards */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; }
+    .card.c-blue { border-color: #0ea5e9; }
+    .card.c-red  { border-color: #f87171; }
+    .card.c-green{ border-color: #34d399; }
+    .card.c-purple{ border-color: #a78bfa; }
+    .card.c-yellow{ border-color: #fbbf24; }
+    .card-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .card-value { font-size: 1.45rem; font-weight: 700; color: #f1f5f9; }
+    .card.c-blue  .card-value { color: #38bdf8; }
+    .card.c-red   .card-value { color: #f87171; }
+    .card.c-green .card-value { color: #34d399; }
+    .card.c-purple.card-value { color: #a78bfa; }
+    .card.c-yellow .card-value { color: #fbbf24; }
+    .card-sub { font-size: 0.72rem; color: #475569; margin-top: 3px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; border-radius: 6px; border: 1px solid #334155; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    thead th {
+      background: #1e293b; color: #94a3b8; padding: 7px 10px;
+      text-align: left; font-weight: 600; position: sticky; top: 0;
+      border-bottom: 1px solid #334155; white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    thead th:hover { color: #e2e8f0; }
+    thead th.active { color: #38bdf8; }
+    tbody tr:nth-child(even) { background: #0f172a; }
+    tbody tr:nth-child(odd)  { background: #111827; }
+    tbody tr:hover { background: #1e3a5f; }
+    tbody tr.row-detect { background: #2d1515 !important; }
+    tbody tr.row-detect:hover { background: #3d1a1a !important; }
+    td { padding: 6px 10px; color: #cbd5e1; border-bottom: 1px solid #1e293b; white-space: nowrap; }
+    td.val-count  { color: #a5f3fc; font-weight: 600; }
+    td.val-detect { color: #f87171; font-weight: 700; }
+    td.val-zero   { color: #475569; }
+
+    .badge { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; }
+    .badge-red    { background: #7f1d1d; color: #fca5a5; }
+    .badge-blue   { background: #0c4a6e; color: #7dd3fc; }
+    .badge-green  { background: #14532d; color: #86efac; }
+    .badge-purple { background: #4c1d95; color: #c4b5fd; }
+    .badge-yellow { background: #78350f; color: #fde68a; }
+    .badge-gray   { background: #1e293b; color: #94a3b8; }
+
+    .placeholder { color: #475569; font-size: 0.83rem; text-align: center; padding: 50px 20px; }
+
+    /* SSE specific */
+    .event-type-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+    .event-pill {
+      padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 600;
+      border: 1px solid; cursor: pointer; transition: opacity 0.15s;
+    }
+    .event-pill:hover { opacity: 0.75; }
+    .event-pill.active { opacity: 1; }
+    .event-pill.inactive { opacity: 0.35; }
+
+    .section-title { font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 8px; }
+
+    .fields-grid { display: flex; flex-wrap: wrap; gap: 5px; max-height: 180px; overflow-y: auto; }
+    .field-tag {
+      padding: 2px 9px; border-radius: 4px; font-size: 0.72rem; font-family: monospace;
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+    }
+    .field-tag.present { background: #14532d; border-color: #15803d; color: #86efac; }
+    .field-tag.missing { background: #1c1917; border-color: #44403c; color: #78716c; }
+
+    .alert-box { background: #2d1515; border: 1px solid #7f1d1d; border-radius: 8px; padding: 10px 14px; font-size: 0.8rem; margin-bottom: 12px; }
+    .alert-box .alert-title { color: #f87171; font-weight: 700; margin-bottom: 4px; }
+    .info-box { background: #0c2240; border: 1px solid #1e4c7c; border-radius: 8px; padding: 10px 14px; font-size: 0.8rem; margin-bottom: 12px; }
+    .info-box .info-title { color: #38bdf8; font-weight: 700; margin-bottom: 4px; }
+
+    pre.raw-data {
+      background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 10px;
+      font-size: 0.72rem; color: #94a3b8; overflow-x: auto; white-space: pre-wrap;
+      word-break: break-all; max-height: 200px; overflow-y: auto; margin-top: 8px;
+    }
+
+    /* Search / filter bar */
+    .search-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+    .search-bar input, .search-bar select {
+      background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+      color: #e2e8f0; padding: 6px 10px; font-size: 0.8rem; outline: none;
+    }
+    .search-bar input:focus, .search-bar select:focus { border-color: #38bdf8; }
+    .search-bar input { flex: 1; min-width: 160px; }
+    .search-bar select { min-width: 160px; max-width: 220px; }
+    .search-bar .search-label { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
+    .search-clear { background: #334155; color: #94a3b8; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.78rem; cursor: pointer; }
+    .search-clear:hover { color: #e2e8f0; }
+
+    /* Pagination */
+    .pagination { display: flex; align-items: center; gap: 6px; padding: 10px 0 2px; flex-wrap: wrap; }
+    .page-btn {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+      border-radius: 5px; padding: 4px 11px; font-size: 0.78rem; cursor: pointer;
+    }
+    .page-btn:hover:not(:disabled) { border-color: #38bdf8; color: #e2e8f0; }
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
+    .page-btn.active { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+    .page-info { font-size: 0.78rem; color: #64748b; padding: 0 4px; }
+    .page-jump { width: 56px; background: #0f172a; border: 1px solid #334155; border-radius: 5px; color: #e2e8f0; padding: 4px 6px; font-size: 0.78rem; text-align: center; outline: none; }
+    .page-jump:focus { border-color: #38bdf8; }
+
+    .mt { margin-top: 16px; }
+    .mb { margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Search Response Analyzer</h1>
+  <p class="subtitle">Analyze Histogram and SSE stream responses from Exabeam Search API</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('histogram')">Histogram Analyzer</div>
+    <div class="tab" onclick="switchTab('sse')">SSE Stream Analyzer</div>
+  </div>
+
+  <!-- ======================== HISTOGRAM TAB ======================== -->
+  <div id="tab-histogram" class="tab-panel active">
+    <div class="layout">
+      <div class="panel">
+        <h2>Paste Any Response</h2>
+        <textarea id="histInput" placeholder='Accepts any format — paste any of:
+• HistogramSearchPartialResult JSON object
+• Raw JSON array of rows
+• Full SSE stream text (data: {...} lines)
+• Plain text containing JSON anywhere inside
+
+Examples:
+{"messageType":"HistogramSearchPartialResult","rows":[...]}
+[{"timeSlot":1780983300,"count":293,"detectionCount":1},...]
+data: {"messageType":"HistogramSearchPartialResult","rows":[...]}
+data: {"messageType":"SearchPartialResult","rows":[...],"fields":[...]}'></textarea>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="analyzeHistogram()">Analyze</button>
+          <button class="btn-clear" onclick="clearHistogram()">Clear</button>
+        </div>
+        <div class="error" id="histError"></div>
+      </div>
+      <div class="panel">
+        <h2>Summary</h2>
+        <div id="histSummary"><div class="placeholder">Results appear here after analysis.</div></div>
+      </div>
+    </div>
+    <div class="panel mt">
+      <h2>Histogram Row Details <span id="histRowCount" style="color:#475569;font-weight:400;"></span></h2>
+      <div id="histTable"><div class="placeholder">Paste any response and click Analyze.</div></div>
+    </div>
+    <div class="panel mt" id="histLogRowsPanel" style="display:none">
+      <h2>Log Result Rows <span id="histLogRowCount" style="color:#475569;font-weight:400;"></span></h2>
+      <div id="histLogTable"></div>
+    </div>
+  </div>
+
+  <!-- ======================== SSE STREAM TAB ======================== -->
+  <div id="tab-sse" class="tab-panel">
+    <div class="layout">
+      <div class="panel">
+        <h2>Paste Raw SSE Stream</h2>
+        <textarea id="sseInput" placeholder='Paste raw SSE stream text, e.g.:
+data: {"messageType":"SearchPartialResult","rows":[...],"fields":[...]}
+
+data: {"messageType":"HistogramSearchPartialResult","rows":[...]}
+
+data: {"messageType":"SearchComplete","totalCount":1234}
+
+Or paste a single JSON object/array directly.'></textarea>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="analyzeSSE()">Analyze</button>
+          <button class="btn-secondary" onclick="validateFields()">Validate Fields</button>
+          <button class="btn-clear" onclick="clearSSE()">Clear</button>
+        </div>
+        <div class="error" id="sseError"></div>
+      </div>
+      <div class="panel">
+        <h2>Event Summary</h2>
+        <div id="sseSummary"><div class="placeholder">Results appear here after analysis.</div></div>
+      </div>
+    </div>
+
+    <div class="panel mt" id="sseFieldsPanel" style="display:none">
+      <h2>Field Validation</h2>
+      <div id="sseFieldsContent"></div>
+    </div>
+
+    <div class="panel mt">
+      <h2>Event Details <span id="sseRowCount" style="color:#475569;font-weight:400;"></span></h2>
+      <div id="sseTable"><div class="placeholder">Paste SSE stream and click Analyze.</div></div>
+    </div>
+
+    <div class="panel mt" id="sseDataRows" style="display:none">
+      <h2>Search Result Rows <span id="sseDataRowCount" style="color:#475569;font-weight:400;"></span></h2>
+      <div id="sseDataTable"></div>
+    </div>
+  </div>
+
+<!-- ======================== SCRIPTS ======================== -->
+<script>
+// ────────── TAB SWITCHING ──────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['histogram','sse'][i] === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ────────── SHARED HELPERS ──────────
+function fmtTs(ts) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toISOString().replace('T',' ').replace('.000Z',' UTC');
+}
+function fmtTsMs(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toISOString().replace('T',' ').replace('.000Z',' UTC');
+}
+function showErr(id, msg) { document.getElementById(id).textContent = msg; }
+function clearErr(id) { document.getElementById(id).textContent = ''; }
+
+const TYPE_COLORS = {
+  SearchPartialResult:          { badge: 'badge-blue',   pill: '#1e4c7c', pillText: '#7dd3fc' },
+  HistogramSearchPartialResult: { badge: 'badge-purple', pill: '#4c1d95', pillText: '#c4b5fd' },
+  SearchComplete:               { badge: 'badge-green',  pill: '#14532d', pillText: '#86efac' },
+  SearchError:                  { badge: 'badge-red',    pill: '#7f1d1d', pillText: '#fca5a5' },
+  AggregationSearchPartialResult: { badge: 'badge-yellow', pill: '#78350f', pillText: '#fde68a' },
+};
+function typeColor(t) { return TYPE_COLORS[t] || { badge: 'badge-gray', pill: '#1e293b', pillText: '#94a3b8' }; }
+
+// ────────── SORT STATE ──────────
+let histSort = { col: 'timeSlot', dir: 1 };
+let histRows = [];
+let sseEvents = [];
+let sseResultRows = [];
+let sseResultFields = [];
+let activeTypeFilter = null;
+
+// SSE data rows pagination + search state
+const DATA_PAGE_SIZE = 100;
+let dataPage = 1;
+let dataFilteredRows = [];
+let dataSearchField = '';
+let dataSearchValue = '';
+
+// ═══════════════════════════════════════════════
+//  HISTOGRAM ANALYZER
+// ═══════════════════════════════════════════════
+
+const HIST_PAGE_SIZE = 100;
+let histLogRows = [];
+let histLogFiltered = [];
+let histLogPage = 1;
+let histLogSearchId = '';
+let histLogSearchTime = '';
+
+// Universal parser: pulls every JSON object out of any text format
+function extractAllJSON(raw) {
+  // 1. Try whole string as JSON
+  try {
+    const p = JSON.parse(raw);
+    return Array.isArray(p) ? p : [p];
+  } catch(e) {}
+
+  const objects = [];
+
+  // 2. SSE data: lines — collect each data block
+  const lines = raw.split('\n');
+  let dataBuf = [];
+  function flushSSE() {
+    if (!dataBuf.length) return;
+    const s = dataBuf.join('').trim();
+    dataBuf = [];
+    try { objects.push(JSON.parse(s)); } catch(e) {}
+  }
+  let foundSSE = false;
+  for (const line of lines) {
+    const t = line.trimEnd();
+    if (t.startsWith('data:')) {
+      foundSSE = true;
+      dataBuf.push(t.slice(5).trimStart());
+    } else if (t === '' && dataBuf.length) {
+      flushSSE();
+    }
+  }
+  flushSSE();
+  if (foundSSE && objects.length) return objects;
+
+  // 3. Greedy brace scan — handles embedded JSON in plain text
+  let depth = 0, start = -1;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (raw[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try { objects.push(JSON.parse(raw.slice(start, i + 1))); } catch(e) {}
+        start = -1;
+      }
+    }
+  }
+  return objects;
+}
+
+function analyzeHistogram() {
+  clearErr('histError');
+  const raw = document.getElementById('histInput').value.trim();
+  if (!raw) { showErr('histError', 'Please paste any response.'); return; }
+
+  const objects = extractAllJSON(raw);
+  if (!objects.length) { showErr('histError', 'No JSON found in the pasted text.'); return; }
+
+  const hRows = [];
+  const lRows = [];
+  let logFields = [];
+
+  objects.forEach(obj => {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) {
+      const first = obj[0] || {};
+      if ('timeSlot' in first) hRows.push(...obj);
+      else lRows.push(...obj);
+      return;
+    }
+    const mt = obj.messageType;
+    if (mt === 'HistogramSearchPartialResult') {
+      if (obj.rows) hRows.push(...obj.rows);
+    } else if (mt === 'SearchPartialResult' || mt === 'AggregationSearchPartialResult') {
+      if (obj.rows) lRows.push(...obj.rows);
+      if (obj.fields && !logFields.length) logFields = obj.fields;
+    } else if (obj.rows) {
+      const first = obj.rows[0] || {};
+      if ('timeSlot' in first) hRows.push(...obj.rows);
+      else { lRows.push(...obj.rows); if (obj.fields && !logFields.length) logFields = obj.fields; }
+    }
+  });
+
+  if (!hRows.length && !lRows.length) {
+    showErr('histError', 'No histogram or log rows found. Check the pasted content.');
+    return;
+  }
+
+  histRows = hRows;
+  histLogRows = lRows;
+  histLogFiltered = lRows;
+  histLogPage = 1; histLogSearchId = ''; histLogSearchTime = '';
+
+  if (hRows.length) {
+    renderHistSummary(hRows, lRows.length);
+    renderHistTable(hRows);
+  } else {
+    document.getElementById('histSummary').innerHTML = `<div class="info-box"><div class="info-title">No Histogram rows found</div>Only log result rows were detected — see table below.</div>`;
+    document.getElementById('histTable').innerHTML = '<div class="placeholder">No HistogramSearchPartialResult data in this response.</div>';
+    document.getElementById('histRowCount').textContent = '';
+  }
+
+  if (lRows.length) {
+    document.getElementById('histLogRowsPanel').style.display = 'block';
+    renderHistLogPage();
+  } else {
+    document.getElementById('histLogRowsPanel').style.display = 'none';
+  }
+}
+
+function renderHistSummary(rows, logCount) {
+  const total = rows.reduce((s,r) => s + (r.count||0), 0);
+  const detTotal = rows.reduce((s,r) => s + (r.detectionCount||0), 0);
+  const maxRow = rows.reduce((a,b) => b.count > a.count ? b : a, rows[0]);
+  const detRows = rows.filter(r => r.detectionCount > 0);
+  const slots = rows.map(r=>r.timeSlot).filter(Boolean);
+  const minTs = Math.min(...slots), maxTs = Math.max(...slots);
+  const avg = (total / rows.length).toFixed(1);
+
+  document.getElementById('histSummary').innerHTML = `
+    <div class="cards">
+      <div class="card c-blue">
+        <div class="card-label">Total Count</div>
+        <div class="card-value">${total.toLocaleString()}</div>
+        <div class="card-sub">${rows.length} slots · avg ${avg}/slot</div>
+      </div>
+      <div class="card ${detTotal>0?'c-red':''}">
+        <div class="card-label">Total Detections</div>
+        <div class="card-value">${detTotal.toLocaleString()}</div>
+        <div class="card-sub">${detRows.length} slot(s) with detections</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Peak Slot Count</div>
+        <div class="card-value" style="font-size:1.1rem">${maxRow.count.toLocaleString()}</div>
+        <div class="card-sub">${fmtTs(maxRow.timeSlot)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Time Range</div>
+        <div class="card-value" style="font-size:0.85rem;padding-top:4px">${fmtTs(minTs)}</div>
+        <div class="card-sub">-> ${fmtTs(maxTs)}</div>
+      </div>
+      ${logCount ? `<div class="card c-green">
+        <div class="card-label">Log Result Rows</div>
+        <div class="card-value">${logCount.toLocaleString()}</div>
+        <div class="card-sub">from SearchPartialResult events</div>
+      </div>` : ''}
+    </div>
+    ${detRows.length ? `<div class="alert-box">
+      <div class="alert-title">Detection Slots (${detRows.length})</div>
+      ${detRows.map(r=>`<div style="color:#fca5a5;margin-top:3px">${fmtTs(r.timeSlot)} -- count: ${r.count}, detections: <b>${r.detectionCount}</b></div>`).join('')}
+    </div>` : ''}`;
+}
+
+function renderHistTable(rows) {
+  const { col, dir } = histSort;
+  const sorted = [...rows].sort((a,b) => {
+    const av = col==='_idx' ? rows.indexOf(a) : (a[col]??0);
+    const bv = col==='_idx' ? rows.indexOf(b) : (b[col]??0);
+    return dir * (av < bv ? -1 : av > bv ? 1 : 0);
+  });
+  document.getElementById('histRowCount').textContent = `(${rows.length} rows)`;
+  const arrow = d => d===1?'A':'V';
+  const th = (label, key) => `<th class="${histSort.col===key?'active':''}" onclick="resortHist('${key}')">${label} ${histSort.col===key?arrow(histSort.dir):'~'}</th>`;
+  document.getElementById('histTable').innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr>${th('#','_idx')}${th('Unix Timestamp','timeSlot')}${th('UTC Time','_ts')}${th('Count','count')}${th('Detections','detectionCount')}</tr></thead>
+      <tbody>${sorted.map((r,i)=>`
+        <tr class="${r.detectionCount>0?'row-detect':''}">
+          <td style="color:#475569">${i+1}</td>
+          <td>${r.timeSlot}</td>
+          <td>${fmtTs(r.timeSlot)}</td>
+          <td class="val-count">${(r.count||0).toLocaleString()}</td>
+          <td class="${r.detectionCount>0?'val-detect':'val-zero'}">${r.detectionCount>0?`${r.detectionCount} <span class="badge badge-red">DETECTION</span>`:r.detectionCount}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+function resortHist(col) {
+  histSort.dir = histSort.col===col ? -histSort.dir : 1;
+  histSort.col = col;
+  renderHistTable(histRows);
+}
+
+// ── Log rows: search + pagination ──
+function applyHistLogSearch() {
+  const idVal   = document.getElementById('histSearchId')   ? document.getElementById('histSearchId').value.trim().toLowerCase()   : '';
+  const timeVal = document.getElementById('histSearchTime') ? document.getElementById('histSearchTime').value.trim().toLowerCase() : '';
+  histLogSearchId   = idVal;
+  histLogSearchTime = timeVal;
+  histLogFiltered = histLogRows.filter(r => {
+    const idOk   = !idVal   || String(r.id   ?? '').toLowerCase().includes(idVal);
+    const timeOk = !timeVal || String(r.approxLogTime ?? '').toLowerCase().includes(timeVal);
+    return idOk && timeOk;
+  });
+  histLogPage = 1;
+  renderHistLogPage();
+}
+
+function clearHistLogSearch() {
+  if (document.getElementById('histSearchId'))   document.getElementById('histSearchId').value = '';
+  if (document.getElementById('histSearchTime')) document.getElementById('histSearchTime').value = '';
+  histLogSearchId = ''; histLogSearchTime = '';
+  histLogFiltered = histLogRows;
+  histLogPage = 1;
+  renderHistLogPage();
+}
+
+function goHistLogPage(p) {
+  const totalPages = Math.max(1, Math.ceil(histLogFiltered.length / HIST_PAGE_SIZE));
+  histLogPage = Math.max(1, Math.min(totalPages, p));
+  renderHistLogPage();
+}
+
+function renderHistLogPage() {
+  const total = histLogFiltered.length;
+  const totalPages = Math.max(1, Math.ceil(total / HIST_PAGE_SIZE));
+  if (histLogPage > totalPages) histLogPage = totalPages;
+  const start = (histLogPage - 1) * HIST_PAGE_SIZE;
+  const end   = Math.min(start + HIST_PAGE_SIZE, total);
+  const pageRows = histLogFiltered.slice(start, end);
+
+  document.getElementById('histLogRowCount').textContent =
+    `(${total.toLocaleString()} rows${total < histLogRows.length ? ' matched' : ''} · showing ${start+1}–${end})`;
+
+  const sampleRow = histLogRows[0] || {};
+  const allKeys = [...new Set(['id','approxLogTime', ...Object.keys(sampleRow)])];
+  const displayCols = allKeys.slice(0, 22);
+  const truncated = allKeys.length > 22;
+
+  function pageBtns(tp, cur) {
+    if (tp <= 1) return '';
+    const pages = new Set([1, tp]);
+    for (let i = Math.max(1, cur-2); i <= Math.min(tp, cur+2); i++) pages.add(i);
+    let html = '', prev = 0;
+    [...pages].sort((a,b)=>a-b).forEach(p => {
+      if (p - prev > 1) html += `<span class="page-info">...</span>`;
+      html += `<button class="page-btn ${p===cur?'active':''}" onclick="goHistLogPage(${p})">${p}</button>`;
+      prev = p;
+    });
+    return html;
+  }
+
+  document.getElementById('histLogTable').innerHTML = `
+    <div class="search-bar">
+      <span class="search-label">Search:</span>
+      <input id="histSearchId"   type="text" placeholder="Filter by id..."           value="${histLogSearchId.replace(/"/g,'&quot;')}"   oninput="applyHistLogSearch()" style="max-width:200px" />
+      <input id="histSearchTime" type="text" placeholder="Filter by approxLogTime..." value="${histLogSearchTime.replace(/"/g,'&quot;')}" oninput="applyHistLogSearch()" style="max-width:220px" />
+      <button class="search-clear" onclick="clearHistLogSearch()">Clear</button>
+      <span class="page-info" style="margin-left:auto">${histLogRows.length.toLocaleString()} total rows</span>
+    </div>
+    ${truncated ? `<div class="info-box mb"><div class="info-title">Columns truncated</div>Showing first 22 of ${allKeys.length} fields. id and approxLogTime are always first.</div>` : ''}
+    <div class="table-wrap" style="max-height:460px"><table>
+      <thead><tr>
+        <th>#</th>
+        ${displayCols.map(f => `<th title="${f}" style="${(f==='id'||f==='approxLogTime')?'color:#38bdf8':''}">${f.length>20?f.slice(0,18)+'...':f}</th>`).join('')}
+      </tr></thead>
+      <tbody>${pageRows.length ? pageRows.map((row, i) => {
+        const absIdx = start + i;
+        return `<tr>
+          <td style="color:#475569">${absIdx+1}</td>
+          ${displayCols.map(f => {
+            const v = row[f];
+            const raw = v === undefined ? '' : v === null ? 'null' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+            const matchId   = f==='id'   && histLogSearchId   && raw.toLowerCase().includes(histLogSearchId);
+            const matchTime = f==='approxLogTime' && histLogSearchTime && raw.toLowerCase().includes(histLogSearchTime);
+            const hlStyle   = (matchId || matchTime) ? 'background:#1c3a5e;' : '';
+            let disp;
+            if (v === undefined) disp = '<span style="color:#334155">--</span>';
+            else if (v === null) disp = '<span style="color:#475569">null</span>';
+            else if (typeof v === 'object') disp = `<span style="color:#7dd3fc" title="${JSON.stringify(v).replace(/"/g,'&quot;')}">[${Array.isArray(v)?'arr':'obj'}]</span>`;
+            else if (f === 'id') disp = `<span style="font-family:monospace;color:#a5f3fc;font-size:0.72rem">${raw.length>40?raw.slice(0,38)+'...':raw}</span>`;
+            else if (f === 'approxLogTime') disp = `<span style="color:#fbbf24;font-size:0.72rem">${raw}</span>`;
+            else disp = raw.length>45 ? `<span title="${raw.replace(/</g,'&lt;')}">${raw.slice(0,43)}...</span>` : raw;
+            return `<td style="font-size:0.72rem;${hlStyle}">${disp}</td>`;
+          }).join('')}
+        </tr>`;
+      }).join('') : `<tr><td colspan="${displayCols.length+1}" style="text-align:center;color:#475569;padding:24px">No rows match the filter.</td></tr>`}
+      </tbody>
+    </table></div>
+    <div class="pagination">
+      <button class="page-btn" onclick="goHistLogPage(histLogPage-1)" ${histLogPage<=1?'disabled':''}>Prev</button>
+      ${pageBtns(totalPages, histLogPage)}
+      <button class="page-btn" onclick="goHistLogPage(histLogPage+1)" ${histLogPage>=totalPages?'disabled':''}>Next</button>
+      <span class="page-info">Page</span>
+      <input class="page-jump" type="number" min="1" max="${totalPages}" value="${histLogPage}"
+        onchange="goHistLogPage(parseInt(this.value))" />
+      <span class="page-info">of ${totalPages}</span>
+    </div>`;
+}
+
+function clearHistogram() {
+  document.getElementById('histInput').value = '';
+  clearErr('histError');
+  document.getElementById('histSummary').innerHTML = '<div class="placeholder">Results appear here after analysis.</div>';
+  document.getElementById('histTable').innerHTML = '<div class="placeholder">Paste any response and click Analyze.</div>';
+  document.getElementById('histRowCount').textContent = '';
+  document.getElementById('histLogRowsPanel').style.display = 'none';
+  histRows = []; histLogRows = []; histLogFiltered = [];
+  histLogPage = 1; histLogSearchId = ''; histLogSearchTime = '';
+}
+
+// ═══════════════════════════════════════════════
+//  SSE STREAM ANALYZER
+// ═══════════════════════════════════════════════
+function parseSSE(raw) {
+  const events = [];
+  // Try as plain JSON first
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      arr.forEach((obj, i) => events.push({ index: i+1, eventName: obj.messageType||'unknown', data: obj }));
+      return events;
+    } catch(e) { /* fall through to SSE parsing */ }
+  }
+
+  // Parse SSE format
+  const lines = raw.split('\n');
+  let current = { eventName: null, dataLines: [], id: null };
+  let idx = 1;
+
+  for (let line of lines) {
+    line = line.trimEnd();
+    if (line === '') {
+      if (current.dataLines.length > 0) {
+        const dataStr = current.dataLines.join('\n');
+        let parsed = null;
+        try { parsed = JSON.parse(dataStr); } catch(e) { parsed = dataStr; }
+        events.push({
+          index: idx++,
+          eventName: current.eventName || (parsed && parsed.messageType) || 'message',
+          id: current.id,
+          rawData: dataStr,
+          data: parsed
+        });
+        current = { eventName: null, dataLines: [], id: null };
+      }
+    } else if (line.startsWith('data:')) {
+      current.dataLines.push(line.slice(5).trimStart());
+    } else if (line.startsWith('event:')) {
+      current.eventName = line.slice(6).trim();
+    } else if (line.startsWith('id:')) {
+      current.id = line.slice(3).trim();
+    }
+  }
+  // flush last
+  if (current.dataLines.length > 0) {
+    const dataStr = current.dataLines.join('\n');
+    let parsed = null;
+    try { parsed = JSON.parse(dataStr); } catch(e) { parsed = dataStr; }
+    events.push({
+      index: idx,
+      eventName: current.eventName || (parsed && parsed.messageType) || 'message',
+      id: current.id,
+      rawData: dataStr,
+      data: parsed
+    });
+  }
+  return events;
+}
+
+function analyzeSSE() {
+  clearErr('sseError');
+  const raw = document.getElementById('sseInput').value.trim();
+  if (!raw) { showErr('sseError', 'Please paste an SSE stream or JSON response.'); return; }
+
+  const events = parseSSE(raw);
+  if (!events.length) { showErr('sseError', 'No events found. Check the format.'); return; }
+
+  sseEvents = events;
+
+  // Collect all SearchPartialResult rows and fields
+  sseResultRows = [];
+  sseResultFields = [];
+  events.forEach(e => {
+    if (e.data && typeof e.data === 'object') {
+      const mt = e.data.messageType;
+      if (mt === 'SearchPartialResult' || mt === 'AggregationSearchPartialResult') {
+        if (e.data.rows) sseResultRows.push(...e.data.rows);
+        if (e.data.fields && !sseResultFields.length) sseResultFields = e.data.fields;
+      }
+    }
+  });
+
+  activeTypeFilter = null;
+  renderSSESummary(events);
+  renderSSETable(events);
+  renderSSEDataRows();
+}
+
+function renderSSESummary(events) {
+  const typeCounts = {};
+  let totalRows = 0;
+  let completeEvent = null;
+  let errorEvent = null;
+
+  events.forEach(e => {
+    const mt = (e.data && e.data.messageType) ? e.data.messageType : e.eventName;
+    typeCounts[mt] = (typeCounts[mt]||0) + 1;
+    if (e.data && e.data.rows) totalRows += e.data.rows.length;
+    if (mt === 'SearchComplete') completeEvent = e.data;
+    if (mt === 'SearchError') errorEvent = e.data;
+  });
+
+  const declaredTotal = completeEvent && completeEvent.totalCount !== undefined ? completeEvent.totalCount : null;
+
+  document.getElementById('sseSummary').innerHTML = `
+    <div class="cards">
+      <div class="card c-green">
+        <div class="card-label">Total Result Rows</div>
+        <div class="card-value">${totalRows.toLocaleString()}</div>
+        <div class="card-sub">${declaredTotal!==null ? `declared total: ${declaredTotal.toLocaleString()}` : 'no SearchComplete found'}</div>
+      </div>
+      <div class="card ${sseResultFields.length?'c-purple':''}">
+        <div class="card-label">Fields Returned</div>
+        <div class="card-value">${sseResultFields.length}</div>
+        <div class="card-sub">unique field names</div>
+      </div>
+      ${declaredTotal!==null ? `<div class="card ${totalRows===declaredTotal?'c-green':'c-red'}">
+        <div class="card-label">Row Count Match</div>
+        <div class="card-value" style="font-size:1.1rem">${totalRows===declaredTotal?'✓ Match':'✗ Mismatch'}</div>
+        <div class="card-sub">got ${totalRows} / declared ${declaredTotal}</div>
+      </div>` : ''}
+    </div>
+
+    ${errorEvent ? `<div class="alert-box">
+      <div class="alert-title">Search Error Detected</div>
+      <div style="color:#fca5a5;margin-top:4px">${JSON.stringify(errorEvent)}</div>
+    </div>` : ''}
+
+    ${completeEvent ? `<div class="info-box">
+      <div class="info-title">SearchComplete</div>
+      <div style="color:#7dd3fc">${Object.entries(completeEvent).map(([k,v])=>`<b>${k}</b>: ${JSON.stringify(v)}`).join(' &nbsp;|&nbsp; ')}</div>
+    </div>` : ''}
+
+    <div class="section-title">Event Types</div>
+    <div class="event-type-pills">
+      ${Object.entries(typeCounts).map(([type, count]) => {
+        const c = typeColor(type);
+        return `<div class="event-pill active" id="pill-${type.replace(/\s/g,'_')}"
+          style="background:${c.pill}20;border-color:${c.pill};color:${c.pillText}"
+          onclick="filterByType('${type}')">${type} <b>${count}</b></div>`;
+      }).join('')}
+      <div class="event-pill active" style="background:#1e293b20;border-color:#334155;color:#94a3b8" onclick="filterByType(null)">All</div>
+    </div>`;
+}
+
+function filterByType(type) {
+  activeTypeFilter = type;
+  renderSSETable(sseEvents);
+}
+
+function renderSSETable(events) {
+  const filtered = activeTypeFilter ? events.filter(e => {
+    const mt = (e.data && e.data.messageType) || e.eventName;
+    return mt === activeTypeFilter;
+  }) : events;
+
+  document.getElementById('sseRowCount').textContent = `(${filtered.length} of ${events.length} events)`;
+
+  if (!filtered.length) {
+    document.getElementById('sseTable').innerHTML = '<div class="placeholder">No events match the current filter.</div>';
+    return;
+  }
+
+  // All events shown — no row cap
+  document.getElementById('sseTable').innerHTML = `
+    <div class="table-wrap" style="max-height:480px"><table>
+      <thead><tr>
+        <th>#</th><th>messageType</th><th>Event ID</th><th>Rows</th><th>Fields</th><th>Extra Info</th><th>Raw (preview)</th>
+      </tr></thead>
+      <tbody>${filtered.map((e) => {
+        const mt = (e.data && e.data.messageType) || e.eventName;
+        const c = typeColor(mt);
+        const rowCount = e.data && e.data.rows ? e.data.rows.length : '—';
+        const fieldCount = e.data && e.data.fields ? e.data.fields.length : '—';
+        const extra = [];
+        if (e.data && typeof e.data === 'object') {
+          if (e.data.totalCount !== undefined) extra.push(`totalCount: ${e.data.totalCount}`);
+          if (e.data.queryId) extra.push(`queryId: ${e.data.queryId}`);
+          if (e.data.elapsed !== undefined) extra.push(`elapsed: ${e.data.elapsed}ms`);
+          if (e.data.error) extra.push(`error: ${e.data.error}`);
+          if (e.data.timeSlot) extra.push(`timeSlot: ${fmtTs(e.data.timeSlot)}`);
+          if (e.data.count !== undefined && !e.data.rows) extra.push(`count: ${e.data.count}`);
+        }
+        const rawStr = e.rawData || JSON.stringify(e.data||'');
+        const rawSnip = rawStr.slice(0,100) + (rawStr.length>100?'…':'');
+        const eid = e.id || '—';
+        return `<tr>
+          <td style="color:#475569">${e.index}</td>
+          <td><span class="badge ${c.badge}">${mt}</span></td>
+          <td style="font-family:monospace;font-size:0.72rem;color:#94a3b8">${eid}</td>
+          <td class="val-count">${rowCount}</td>
+          <td class="val-count">${fieldCount}</td>
+          <td style="color:#64748b;font-size:0.72rem;max-width:260px;white-space:normal;word-break:break-all">${extra.join(' | ')||'—'}</td>
+          <td style="font-family:monospace;font-size:0.7rem;color:#475569;max-width:240px;white-space:normal;word-break:break-all">${rawSnip}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+function applyDataSearch() {
+  const field = document.getElementById('dataSearchField') ? document.getElementById('dataSearchField').value : '';
+  const val   = document.getElementById('dataSearchValue') ? document.getElementById('dataSearchValue').value.trim().toLowerCase() : '';
+  dataSearchField = field;
+  dataSearchValue = val;
+  if (!val) {
+    dataFilteredRows = sseResultRows;
+  } else if (field === '__id__') {
+    // search by row # (1-based)
+    const num = parseInt(val, 10);
+    dataFilteredRows = isNaN(num) ? sseResultRows : sseResultRows.filter((_, i) => i+1 === num);
+  } else if (field) {
+    dataFilteredRows = sseResultRows.filter(r => {
+      const v = r[field];
+      if (v === undefined || v === null) return false;
+      return String(v).toLowerCase().includes(val);
+    });
+  } else {
+    // search all fields
+    dataFilteredRows = sseResultRows.filter(r =>
+      Object.values(r).some(v => v !== null && v !== undefined && String(v).toLowerCase().includes(val))
+    );
+  }
+  dataPage = 1;
+  renderDataTable();
+}
+
+function renderDataTable() {
+  const panel = document.getElementById('sseDataRows');
+  panel.style.display = 'block';
+
+  const cols = sseResultFields.length ? sseResultFields :
+    [...new Set(sseResultRows.flatMap(r => Object.keys(r)))];
+  const displayCols = cols.slice(0, 25);
+  const truncated = cols.length > 25;
+
+  const total = dataFilteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / DATA_PAGE_SIZE));
+  if (dataPage > totalPages) dataPage = totalPages;
+  const start = (dataPage - 1) * DATA_PAGE_SIZE;
+  const end = Math.min(start + DATA_PAGE_SIZE, total);
+  const pageRows = dataFilteredRows.slice(start, end);
+
+  document.getElementById('sseDataRowCount').textContent =
+    `(${total.toLocaleString()} rows${total < sseResultRows.length ? ' matched' : ''} · showing ${start+1}–${end})`;
+
+  // Build field options for search dropdown
+  const fieldOpts = ['<option value="">All fields</option>',
+    '<option value="__id__">Row #</option>',
+    ...cols.map(f => `<option value="${f}" ${dataSearchField===f?'selected':''}>${f}</option>`)
+  ].join('');
+
+  // Pagination buttons: always show first, last, ±2 around current
+  function pageBtns() {
+    if (totalPages <= 1) return '';
+    const pages = new Set([1, totalPages]);
+    for (let i = Math.max(1, dataPage-2); i <= Math.min(totalPages, dataPage+2); i++) pages.add(i);
+    const sorted = [...pages].sort((a,b)=>a-b);
+    let html = '';
+    let prev = 0;
+    sorted.forEach(p => {
+      if (p - prev > 1) html += `<span class="page-info">…</span>`;
+      html += `<button class="page-btn ${p===dataPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+      prev = p;
+    });
+    return html;
+  }
+
+  document.getElementById('sseDataTable').innerHTML = `
+    <div class="search-bar">
+      <span class="search-label">Search:</span>
+      <select id="dataSearchField" onchange="applyDataSearch()">${fieldOpts}</select>
+      <input id="dataSearchValue" type="text" placeholder="Filter value…" value="${dataSearchValue.replace(/"/g,'&quot;')}"
+        oninput="applyDataSearch()" />
+      <button class="search-clear" onclick="clearDataSearch()">Clear</button>
+      <span class="page-info" style="margin-left:auto">${total.toLocaleString()} rows</span>
+    </div>
+    ${truncated ? `<div class="info-box mb"><div class="info-title">Columns truncated</div>Displaying first 25 of ${cols.length} fields.</div>` : ''}
+    <div class="table-wrap" style="max-height:460px"><table>
+      <thead><tr>
+        <th>#</th>
+        ${displayCols.map(f => `<th title="${f}">${f.length>18?f.slice(0,16)+'…':f}</th>`).join('')}
+      </tr></thead>
+      <tbody>${pageRows.length ? pageRows.map((row, i) => {
+        const absIdx = start + i;
+        return `<tr>
+          <td style="color:#475569">${absIdx+1}</td>
+          ${displayCols.map(f => {
+            const v = row[f];
+            const raw = v === undefined ? '' : v === null ? 'null' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+            const highlight = dataSearchValue && (dataSearchField === f || (!dataSearchField && raw.toLowerCase().includes(dataSearchValue)))
+              ? 'background:#1c3a5e;' : '';
+            const disp = v === undefined ? '<span style="color:#334155">—</span>' :
+              v === null ? '<span style="color:#475569">null</span>' :
+              typeof v === 'object' ? `<span style="color:#7dd3fc" title="${JSON.stringify(v).replace(/"/g,'&quot;')}">[${Array.isArray(v)?'arr':'obj'}]</span>` :
+              raw.length > 50 ? `<span title="${raw.replace(/</g,'&lt;')}">${raw.slice(0,48)}…</span>` : raw;
+            return `<td style="font-size:0.72rem;${highlight}">${disp}</td>`;
+          }).join('')}
+        </tr>`;
+      }).join('') : `<tr><td colspan="${displayCols.length+1}" style="text-align:center;color:#475569;padding:24px">No rows match the filter.</td></tr>`}
+      </tbody>
+    </table></div>
+    <div class="pagination">
+      <button class="page-btn" onclick="goPage(dataPage-1)" ${dataPage<=1?'disabled':''}>‹ Prev</button>
+      ${pageBtns()}
+      <button class="page-btn" onclick="goPage(dataPage+1)" ${dataPage>=totalPages?'disabled':''}>Next ›</button>
+      <span class="page-info">Page</span>
+      <input class="page-jump" type="number" min="1" max="${totalPages}" value="${dataPage}"
+        onchange="goPage(parseInt(this.value))" />
+      <span class="page-info">of ${totalPages}</span>
+    </div>`;
+}
+
+function goPage(p) {
+  const totalPages = Math.max(1, Math.ceil(dataFilteredRows.length / DATA_PAGE_SIZE));
+  dataPage = Math.max(1, Math.min(totalPages, p));
+  renderDataTable();
+}
+
+function clearDataSearch() {
+  document.getElementById('dataSearchField').value = '';
+  document.getElementById('dataSearchValue').value = '';
+  dataSearchField = '';
+  dataSearchValue = '';
+  dataFilteredRows = sseResultRows;
+  dataPage = 1;
+  renderDataTable();
+}
+
+function renderSSEDataRows() {
+  const panel = document.getElementById('sseDataRows');
+  if (!sseResultRows.length) { panel.style.display = 'none'; return; }
+  dataFilteredRows = sseResultRows;
+  dataPage = 1;
+  dataSearchField = '';
+  dataSearchValue = '';
+  renderDataTable();
+}
+
+function validateFields() {
+  clearErr('sseError');
+  const raw = document.getElementById('sseInput').value.trim();
+  if (!raw) { showErr('sseError', 'Please paste an SSE stream first, then click Validate Fields.'); return; }
+
+  if (!sseEvents.length) { analyzeSSE(); }
+
+  const panel = document.getElementById('sseFieldsPanel');
+  const content = document.getElementById('sseFieldsContent');
+
+  if (!sseResultFields.length && !sseResultRows.length) {
+    panel.style.display = 'block';
+    content.innerHTML = '<div class="placeholder">No SearchPartialResult events with fields/rows found.</div>';
+    return;
+  }
+
+  // Fields returned in response
+  const returnedFields = new Set(sseResultFields.length ? sseResultFields :
+    sseResultRows.flatMap(r => Object.keys(r)));
+
+  // Fields populated in actual rows (have at least one non-null value)
+  const populatedFields = new Set();
+  sseResultRows.forEach(row => {
+    Object.entries(row).forEach(([k,v]) => {
+      if (v !== null && v !== undefined && v !== '') populatedFields.add(k);
+    });
+  });
+
+  const returnedArr = [...returnedFields].sort();
+  const populatedArr = [...populatedFields].sort();
+  const emptyFields = returnedArr.filter(f => !populatedFields.has(f));
+
+  panel.style.display = 'block';
+  content.innerHTML = `
+    <div class="cards">
+      <div class="card c-green">
+        <div class="card-label">Fields in Schema</div>
+        <div class="card-value">${returnedArr.length}</div>
+        <div class="card-sub">declared in response</div>
+      </div>
+      <div class="card c-blue">
+        <div class="card-label">Fields with Data</div>
+        <div class="card-value">${populatedArr.length}</div>
+        <div class="card-sub">have ≥1 non-null value</div>
+      </div>
+      <div class="card ${emptyFields.length?'c-yellow':''}">
+        <div class="card-label">Empty Fields</div>
+        <div class="card-value">${emptyFields.length}</div>
+        <div class="card-sub">all values null/empty</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Rows Sampled</div>
+        <div class="card-value">${sseResultRows.length.toLocaleString()}</div>
+        <div class="card-sub">for population check</div>
+      </div>
+    </div>
+
+    <div class="section-title">All Fields — green = has data, gray = all empty</div>
+    <div class="fields-grid">
+      ${returnedArr.map(f => `<span class="field-tag ${populatedFields.has(f)?'present':'missing'}" title="${f}">${f}</span>`).join('')}
+    </div>
+
+    ${emptyFields.length ? `
+      <div class="section-title mt">Empty / Unpopulated Fields (${emptyFields.length})</div>
+      <div class="fields-grid">
+        ${emptyFields.map(f=>`<span class="field-tag missing">${f}</span>`).join('')}
+      </div>` : '<div style="color:#34d399;font-size:0.82rem;margin-top:12px">✓ All returned fields have data in at least one row.</div>'}`;
+}
+
+function clearSSE() {
+  document.getElementById('sseInput').value = '';
+  clearErr('sseError');
+  document.getElementById('sseSummary').innerHTML = '<div class="placeholder">Results appear here after analysis.</div>';
+  document.getElementById('sseTable').innerHTML = '<div class="placeholder">Paste SSE stream and click Analyze.</div>';
+  document.getElementById('sseRowCount').textContent = '';
+  document.getElementById('sseFieldsPanel').style.display = 'none';
+  document.getElementById('sseDataRows').style.display = 'none';
+  sseEvents = []; sseResultRows = []; sseResultFields = []; activeTypeFilter = null;
+  dataFilteredRows = []; dataPage = 1; dataSearchField = ''; dataSearchValue = '';
+}
+</script>
+</body>
+</html>
